@@ -1,0 +1,57 @@
+swagger: '2.0'
+info:
+  title: LTP Service
+  version: 1.0.0
+  description: API for retrieving the Last Traded Price (LTP) for various currency pairs.
+
+basePath: /api/v1
+
+paths:
+  /ltp:
+    get:
+      summary: Get Last Traded Price (LTP) for currency pairs
+      parameters:
+        - name: pair
+          in: query
+          required: true
+          type: array
+          items:
+            type: string
+          description: List of currency pairs (e.g., BTCUSD, BTCCHF, BTCEUR)
+      responses:
+        200:
+          description: Successful response
+          schema:
+            $ref: '#/definitions/LastTradedPriceResponse'
+        400:
+          description: Bad request (missing 'pair' parameter)
+        500:
+          description: Internal server error
+
+definitions:
+  LastTradedPriceResponse:
+    type: object
+    properties:
+      ltp:
+        type: array
+        items:
+          $ref: '#/definitions/LastTradedPrice'
+  LastTradedPrice:
+    type: object
+    properties:
+      pair:
+        type: string
+      amount:
+        type: number
+        format: float64
+  PartialLastTradedPriceResponse:
+    type: object
+    properties:
+      ltp:
+        type: array
+        items:
+          $ref: '#/definitions/LastTradedPrice'
+      errors:
+        type: array
+        items:
+          type: string
