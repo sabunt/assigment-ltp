@@ -6,18 +6,12 @@ This is a Go service that provides an API for retrieving the Last Traded Price (
 
 ## Features
 - REST API: Fetch LTP for one or more currency pairs.
-
-- WebSocket: Real-time updates from Kraken.
-
-- Redis Caching: Improves performance by caching data.
-
 - Docker Support: Easy to run with Docker Compose.
 
 ## Requirements
 
 - Go 1.23 or higher
 - Docker, Docker Compose (optional)
-- Redis
 - Go-swagger
 
 ## Building and Running the Application

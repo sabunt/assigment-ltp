@@ -14,11 +14,12 @@ import (
 )
 
 type LTPHandler struct {
-	krakenService services.KrakenServiceInterface
+	krakenService  services.KrakenServiceInterface
+	maxConcurrency int
 }
 
-func NewLTPHanlder(krakenService services.KrakenServiceInterface) *LTPHandler {
-	return &LTPHandler{krakenService: krakenService}
+func NewLTPHanlder(krakenService services.KrakenServiceInterface, maxConcurrency int) *LTPHandler {
+	return &LTPHandler{krakenService: krakenService, maxConcurrency: maxConcurrency}
 }
 
 func (h *LTPHandler) GetLTP(c echo.Context) error {
@@ -35,6 +36,8 @@ func (h *LTPHandler) GetLTP(c echo.Context) error {
 		mu      sync.Mutex
 	)
 
+	semaphore := make(chan struct{}, h.maxConcurrency)
+
 	for _, pair := range pairs {
 		if err := utils.ValidatePair(pair); err != nil {
 			logrus.Errorf("Invalid pair format: %v", err)
@@ -43,8 +46,12 @@ func (h *LTPHandler) GetLTP(c echo.Context) error {
 		}
 
 		wg.Add(1)
+
+		semaphore <- struct{}{}
+
 		go func(pair string) {
 			defer wg.Done()
+			defer func() { <-semaphore }()
 
 			amount, err := h.krakenService.GetLastTradedPrice(pair)
 			if err != nil {

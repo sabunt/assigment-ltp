@@ -1,6 +1,7 @@
 package restapi_test
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,7 +25,7 @@ func (m *MockKrakenService) GetLastTradedPrice(pair string) (float64, error) {
 func TestGetLTP(t *testing.T) {
 	e := echo.New()
 	mockService := new(MockKrakenService)
-	handler := restapi.NewLTPHanlder(mockService)
+	handler := restapi.NewLTPHanlder(mockService, 5)
 
 	t.Run("Missing 'pair' parameter", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/ltp", nil)
@@ -89,6 +90,26 @@ func TestGetLTP(t *testing.T) {
 		expected := `{
 			"ltp": [{"pair": "BTC/USD", "amount": 50000}],
 			"errors": ["Invalid pair format: INVALID"]
+		}`
+		assert.JSONEq(t, expected, rec.Body.String())
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("One of returns timeout error", func(t *testing.T) {
+		mockService.On("GetLastTradedPrice", "BTC/USD").Return(0.0, errors.New("timeout")).Once()
+		mockService.On("GetLastTradedPrice", "ETH/USD").Return(1800.0, nil).Once()
+		req := httptest.NewRequest(http.MethodGet, "/ltp?pair=BTC/USD&pair=ETH/USD", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+	
+		err := handler.GetLTP(c)
+	
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusPartialContent, rec.Code)
+	
+		expected := `{
+			"ltp": [{"pair": "ETH/USD", "amount": 1800}],
+			"errors": ["Failed to fetch LTP for pair BTC/USD"]
 		}`
 		assert.JSONEq(t, expected, rec.Body.String())
 		mockService.AssertExpectations(t)

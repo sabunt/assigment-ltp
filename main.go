@@ -1,10 +1,12 @@
 package main
 
 import (
+	"net/http"
 	"os"
-	"test-assigment-ltp/internal/cache"
+	"strconv"
 	"test-assigment-ltp/internal/restapi"
 	"test-assigment-ltp/internal/services"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -17,16 +19,17 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	redisAddr := os.Getenv("REDIS_ADDRESS")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	httpclient := http.Client{Timeout: 10 * time.Second}
+	kService := services.NewKrakenService(&httpclient)
+
+	concurrencyLimit := 5 // Default
+	if val, exists := os.LookupEnv("MAX_CONCURRENCY"); exists {
+		if limit, err := strconv.Atoi(val); err == nil {
+			concurrencyLimit = limit
+		}
 	}
 
-	redis := cache.NewRedis(redisAddr)
-
-	kService := services.NewKrakenService(redis)
-
-	ltpHanlder := restapi.NewLTPHanlder(kService)
+	ltpHanlder := restapi.NewLTPHanlder(kService, concurrencyLimit)
 
 	e.GET("/api/v1/ltp", ltpHanlder.GetLTP)
 
